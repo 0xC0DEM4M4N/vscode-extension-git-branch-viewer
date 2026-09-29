@@ -1,0 +1,12 @@
+.vscode/**
+.git/**
+Claude outputs/**
+src/**
+install/**
+tsconfig.json
+package-lock.json
+**/.DS_Store
+**/*.map
+**/*.bak
+.gitignore
+mockup/**

@@ -1,0 +1,302 @@
+{
+  "name": "git-branch-viewer",
+  "displayName": "Git Branch Viewer",
+  "description": "See every branch alongside its pull request, CI build state and review count, then switch branch or rebase onto main in one click. Requires the GitHub CLI (gh) for pull request data.",
+  "version": "0.1.1",
+  "publisher": "CodeMaman",
+  "icon": "images/avatar.png",
+  "galleryBanner": {
+    "color": "#000000",
+    "theme": "dark"
+  },
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xC0DEM4M4N/vscode-extension-git-branch-viewer"
+  },
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitBranchViewer",
+          "title": "Git Branch Viewer",
+          "icon": "media/activity-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitBranchViewer": [
+        {
+          "id": "gitBranchViewer.branches",
+          "name": "Branches & Pull Requests",
+          "icon": "media/activity-icon.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "gitBranchViewer.branches",
+        "contents": "No Git repository found in the open workspace.\n[Open Folder](command:vscode.openFolder)",
+        "when": "gitBranchViewer.noRepo"
+      }
+    ],
+    "commands": [
+      {
+        "command": "gitBranchViewer.refresh",
+        "title": "Refresh",
+        "category": "Git Branch Viewer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitBranchViewer.fetch",
+        "title": "Fetch From Remote and Refresh",
+        "category": "Git Branch Viewer",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "gitBranchViewer.switchBranch",
+        "title": "Switch to Branch",
+        "category": "Git Branch Viewer",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "gitBranchViewer.rebaseOntoBase",
+        "title": "Rebase Onto Main",
+        "category": "Git Branch Viewer",
+        "icon": "$(fold-up)"
+      },
+      {
+        "command": "gitBranchViewer.openPr",
+        "title": "Show Pull Request",
+        "category": "Git Branch Viewer",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "gitBranchViewer.createPr",
+        "title": "Create Pull Request",
+        "category": "Git Branch Viewer",
+        "icon": "$(git-pull-request-create)"
+      },
+      {
+        "command": "gitBranchViewer.copyBranchName",
+        "title": "Copy Branch Name",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.abortRebase",
+        "title": "Abort Rebase in Progress",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.openUrl",
+        "title": "Open URL",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.deleteBranch",
+        "title": "Delete Branch...",
+        "category": "Git Branch Viewer",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitBranchViewer.copyCommitHash",
+        "title": "Copy Commit Hash",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.loadMoreCommits",
+        "title": "Show More Commits",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.showPr",
+        "title": "Show Pull Request (internal)",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.showCommit",
+        "title": "Show Commit (internal)",
+        "category": "Git Branch Viewer"
+      },
+      {
+        "command": "gitBranchViewer.openPrInBrowser",
+        "title": "Open Pull Request in Browser",
+        "category": "Git Branch Viewer",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "gitBranchViewer.openCommitInBrowser",
+        "title": "Open Commit on GitHub",
+        "category": "Git Branch Viewer"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "gitBranchViewer.openUrl",
+          "when": "false"
+        },
+        {
+          "command": "gitBranchViewer.copyCommitHash",
+          "when": "false"
+        },
+        {
+          "command": "gitBranchViewer.loadMoreCommits",
+          "when": "false"
+        },
+        {
+          "command": "gitBranchViewer.showPr",
+          "when": "false"
+        },
+        {
+          "command": "gitBranchViewer.showCommit",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "gitBranchViewer.refresh",
+          "when": "view == gitBranchViewer.branches",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitBranchViewer.fetch",
+          "when": "view == gitBranchViewer.branches",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitBranchViewer.switchBranch",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\bcurrent\\b)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitBranchViewer.rebaseOntoBase",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\b(?:remoteOnly|prDone|baseBranch)\\b)/",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitBranchViewer.openPr",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch.*\\bhasPr\\b/",
+          "group": "inline@3"
+        },
+        {
+          "command": "gitBranchViewer.switchBranch",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\bcurrent\\b)/",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "gitBranchViewer.rebaseOntoBase",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\b(?:remoteOnly|prDone|baseBranch)\\b)/",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "gitBranchViewer.openPr",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch.*\\bhasPr\\b/",
+          "group": "2_pr@1"
+        },
+        {
+          "command": "gitBranchViewer.createPr",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\bhasPr\\b)(?!.*\\bremoteOnly\\b)/",
+          "group": "2_pr@2"
+        },
+        {
+          "command": "gitBranchViewer.copyBranchName",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "gitBranchViewer.deleteBranch",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?=.*\\bprDone\\b)(?!.*\\b(?:current|protected|remoteOnly)\\b)/",
+          "group": "inline@4"
+        },
+        {
+          "command": "gitBranchViewer.deleteBranch",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch(?!.*\\b(?:current|protected|remoteOnly)\\b)/",
+          "group": "4_delete@1"
+        },
+        {
+          "command": "gitBranchViewer.copyCommitHash",
+          "when": "view == gitBranchViewer.branches && viewItem == commit",
+          "group": "1_commit@1"
+        },
+        {
+          "command": "gitBranchViewer.openPrInBrowser",
+          "when": "view == gitBranchViewer.branches && viewItem =~ /^branch.*\\bhasPr\\b/",
+          "group": "2_pr@3"
+        },
+        {
+          "command": "gitBranchViewer.openCommitInBrowser",
+          "when": "view == gitBranchViewer.branches && viewItem == commit",
+          "group": "1_commit@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Git Branch Viewer",
+      "properties": {
+        "gitBranchViewer.baseBranch": {
+          "type": "string",
+          "default": "",
+          "description": "Branch that 'Rebase Onto Main' rebases onto (for example 'main', 'master' or 'develop'). Leave empty to auto-detect from origin/HEAD, falling back to main/master."
+        },
+        "gitBranchViewer.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 30,
+          "description": "How often (in seconds) pull request, CI and review data is re-fetched from GitHub while the view is visible. Local branch state refreshes instantly on any git change."
+        },
+        "gitBranchViewer.showRemoteOnlyPrs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Also list your own open pull requests whose branch is not checked out locally, so you can switch to them with one click (uses `gh pr checkout`)."
+        },
+        "gitBranchViewer.commitsPageSize": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "description": "How many commits are listed at a time under a branch's Commits node. A 'Show more' entry loads the next batch, so very long histories stay fast."
+        },
+        "gitBranchViewer.protectedBranches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "main",
+            "master",
+            "develop",
+            "dev",
+            "trunk"
+          ],
+          "description": "Branches that Git Branch Viewer will never offer to delete (locally or on the remote). The detected base branch is always protected as well."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "build-install": "npm run build && rm -rf install/*.vsix && npm run package && mkdir -p install && mv *.vsix install/",
+    "lint": "echo \"No lint configured\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.92.0",
+    "typescript": "^5.6.3",
+    "@vscode/vsce": "^3.2.2"
+  }
+}
