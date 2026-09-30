@@ -6,16 +6,34 @@ Part of the CodeMaman extension family, alongside [AI Co-Authoring Tracker](http
 
 ## What you see
 
-Open the **Git Branch Viewer** icon in the activity bar. Branches are grouped as:
+Open the **Git Branch Viewer** icon in the activity bar. It has two collapsible sections:
 
-- **Current Branch**
-- **Open Pull Requests** (including your own open PRs that are not checked out locally)
-- **Local Branches** (no pull request)
-- **Merged / Closed** (branches whose PR is finished, handy for spotting clean-up candidates)
+- **Current Branch** shows the branch you are on, highlighted in blue with a badge, and its name sits next to the section title so you can see it even when the section is collapsed. It opens with the pull request, build, reviews, comparison with main, remote status and the full list of commits, with anything not yet pushed marked.
+- **Branches & Pull Requests** lists every other branch, grouped as **Open Pull Requests** (including your own open PRs that are not checked out locally), **Local Branches** (no pull request) and **Merged / Closed** (branches whose PR is finished, handy for spotting clean-up candidates).
 
-![Branches grouped into current, open pull requests, local and merged/closed, each with PR number, build state, review count and how far behind main](media/screenshots/branches.png)
+![The Current Branch section above the Branches & Pull Requests section](media/screenshots/branches.png)
 
 *Screenshots in this README are illustrative renderings of the extension's output for a demo repository.*
+
+## See it in action
+
+**Browse pull requests.** Expand a branch, then click Reviews or Build to open the pull request inside VS Code.
+
+![Expanding a branch and opening its reviews, checks and commits](media/demo/01-browse-pull-requests.gif)
+
+**Rebase onto main.** Hover a branch, click rebase and confirm. The extension fetches, then rebases with `--autostash`.
+
+![Rebasing a branch onto main from the inline button](media/demo/02-rebase-onto-main.gif)
+
+**Delete a branch.** Right-click, choose Delete Branch…, then delete locally or locally and on origin.
+
+![Deleting a merged branch locally and on origin](media/demo/03-delete-branch.gif)
+
+**Current branch.** It has its own section, and its name stays beside the title when you collapse it.
+
+![Collapsing and expanding the Current Branch section](media/demo/04-current-branch.gif)
+
+*Animations are recorded from an interactive mock-up using demo data.*
 
 Each branch row shows, at a glance: `#PR · ✓ CI · 2 reviews (2✓) · ↓3 behind main`.
 

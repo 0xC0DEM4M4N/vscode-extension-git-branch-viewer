@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import { divergence, listCommits } from './git';
 import { BranchInfo, CiState, CommitInfo, PrInfo, RepoSnapshot } from './model';
 
+/** URI scheme used only so a FileDecorationProvider can colour and badge the current branch row. */
+export const CURRENT_SCHEME = 'git-branch-viewer-current';
+
+export type ProviderMode = 'current' | 'others';
+
 export type GroupId = 'current' | 'prs' | 'local' | 'closed';
 
 export class RepoNode {
@@ -334,6 +339,9 @@ function detailNodes(snap: RepoSnapshot, b: BranchInfo): DetailNode[] {
 }
 
 export class BranchTreeProvider implements vscode.TreeDataProvider<TreeNode> {
+  /** 'current' shows only the checked-out branch; 'others' shows every other branch, grouped. */
+  constructor(private readonly mode: ProviderMode = 'others') {}
+
   private readonly emitter = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
   snapshots: RepoSnapshot[] = [];
@@ -375,6 +383,10 @@ export class BranchTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         item.description = branchDescription(node.snap, b);
         item.iconPath = branchIcon(b);
         item.contextValue = contextValue(node.snap, b);
+        if (this.mode === 'current') {
+          // Lets the decoration provider colour the label and add a badge, so this row stands out.
+          item.resourceUri = vscode.Uri.from({ scheme: CURRENT_SCHEME, path: '/current' });
+        }
         item.tooltip = branchTooltip(node.snap, b);
         return item;
       }
@@ -390,7 +402,10 @@ export class BranchTreeProvider implements vscode.TreeDataProvider<TreeNode> {
       }
       case 'commits': {
         const b = node.branch;
-        const item = new vscode.TreeItem('Commits', vscode.TreeItemCollapsibleState.Collapsed);
+        const item = new vscode.TreeItem(
+          'Commits',
+          this.mode === 'current' ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
+        );
         item.id = `commits:${commitsKey(node.snap, b)}`;
         item.iconPath = new vscode.ThemeIcon('history');
         item.description =
@@ -506,18 +521,10 @@ export class BranchTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   }
 
   private repoChildren(snap: RepoSnapshot): TreeNode[] {
-    const nodes: TreeNode[] = [];
-    if (snap.rebaseInProgress) {
-      nodes.push(
-        new MessageNode(
-          `rebase:${snap.root}`,
-          'Rebase in progress — resolve conflicts',
-          new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.orange')),
-          'Resolve the conflicts in Source Control, then continue the rebase (or run "Git Branch Viewer: Abort Rebase in Progress").',
-          { command: 'workbench.view.scm', title: 'Open Source Control' }
-        )
-      );
+    if (this.mode === 'current') {
+      return this.currentChildren(snap);
     }
+    const nodes: TreeNode[] = [];
     if (snap.ghError) {
       nodes.push(
         new MessageNode(
@@ -540,6 +547,36 @@ export class BranchTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         )
       );
     }
-    return [...nodes, ...groupBranches(snap)];
+    return [...nodes, ...groupBranches(snap).filter((g) => g.id !== 'current')];
+  }
+
+  /** The Current Branch section: a rebase warning if one is running, then the checked-out branch itself. */
+  private currentChildren(snap: RepoSnapshot): TreeNode[] {
+    const nodes: TreeNode[] = [];
+    if (snap.rebaseInProgress) {
+      nodes.push(
+        new MessageNode(
+          `rebase:${snap.root}`,
+          'Rebase in progress — resolve conflicts',
+          new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.orange')),
+          'Resolve the conflicts in Source Control, then continue the rebase (or run "Git Branch Viewer: Abort Rebase in Progress").',
+          { command: 'workbench.view.scm', title: 'Open Source Control' }
+        )
+      );
+    }
+    const current = snap.branches.find((b) => b.isCurrent);
+    if (current) {
+      nodes.push(new BranchNode(snap, current));
+    } else if (snap.detachedAt) {
+      nodes.push(
+        new MessageNode(
+          `detached:${snap.root}`,
+          `Detached HEAD at ${snap.detachedAt}`,
+          new vscode.ThemeIcon('git-commit'),
+          'HEAD is not on a branch. Switch to a branch from the list below.'
+        )
+      );
+    }
+    return nodes;
   }
 }

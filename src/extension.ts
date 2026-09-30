@@ -16,7 +16,7 @@ import { BranchInfo, GhData, RepoSnapshot } from './model';
 import { buildSnapshot } from './snapshot';
 import { showPullRequest } from './prPanel';
 import { PrSection } from './prRender';
-import { BranchNode, BranchTreeProvider, isProtectedBranch, TreeNode } from './tree';
+import { BranchNode, BranchTreeProvider, CURRENT_SCHEME, isProtectedBranch, TreeNode } from './tree';
 
 interface Target {
   snap: RepoSnapshot;
@@ -24,6 +24,7 @@ interface Target {
 }
 
 const VIEW_ID = 'gitBranchViewer.branches';
+const CURRENT_VIEW_ID = 'gitBranchViewer.current';
 const COMMIT_SCHEME = 'git-branch-viewer-commit';
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -41,7 +42,22 @@ class Controller implements vscode.Disposable {
   private readonly watchers = new Map<string, vscode.Disposable>();
   private debounce?: NodeJS.Timeout;
 
-  constructor(readonly provider: BranchTreeProvider) {}
+  /** Called whenever fresh snapshots are published, so the UI can reflect the current branch in the section header. */
+  onUpdate?: (snapshots: RepoSnapshot[]) => void;
+
+  /** `providers[0]` is the main branch list; every provider receives the same snapshots. */
+  constructor(readonly providers: BranchTreeProvider[]) {}
+
+  get provider(): BranchTreeProvider {
+    return this.providers[0];
+  }
+
+  private publish(snapshots: RepoSnapshot[]): void {
+    for (const p of this.providers) {
+      p.setSnapshots(snapshots);
+    }
+    this.onUpdate?.(snapshots);
+  }
 
   /** Queues a refresh. `forceGh` bypasses the GitHub cache. */
   refresh(forceGh = false): Promise<void> {
@@ -111,7 +127,7 @@ class Controller implements vscode.Disposable {
       };
 
       // Paint local state straight away, then layer GitHub data on top once it arrives.
-      this.provider.setSnapshots(await build());
+      this.publish(await build());
 
       const stale = repos.filter((r) => {
         const cached = this.gh.get(r.root);
@@ -119,7 +135,7 @@ class Controller implements vscode.Disposable {
       });
       if (stale.length > 0) {
         await Promise.all(stale.map(async (r) => this.gh.set(r.root, await fetchGh(r.root))));
-        this.provider.setSnapshots(await build());
+        this.publish(await build());
       }
     });
   }
@@ -498,9 +514,27 @@ async function abortRebase(controller: Controller, snap?: RepoSnapshot): Promise
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new BranchTreeProvider();
-  const controller = new Controller(provider);
+  // Two sections in the same sidebar container: the checked-out branch, and every other branch.
+  const provider = new BranchTreeProvider('others');
+  const currentProvider = new BranchTreeProvider('current');
+  const controller = new Controller([provider, currentProvider]);
   const view = vscode.window.createTreeView(VIEW_ID, { treeDataProvider: provider, showCollapseAll: true, canSelectMany: true });
+  const currentView = vscode.window.createTreeView(CURRENT_VIEW_ID, { treeDataProvider: currentProvider, canSelectMany: true });
+  const anyVisible = () => view.visible || currentView.visible;
+
+  // The branch name sits next to the section title, so it is visible even when that section is collapsed.
+  controller.onUpdate = (snapshots) => {
+    currentView.description =
+      snapshots.length === 1 ? snapshots[0].currentBranch ?? (snapshots[0].detachedAt ? `detached at ${snapshots[0].detachedAt}` : undefined) : undefined;
+  };
+
+  // Colours the current branch's label and adds a badge, the closest a tree row gets to "highlighted".
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider({
+      provideFileDecoration: (uri) =>
+        uri.scheme === CURRENT_SCHEME ? new vscode.FileDecoration('●', 'Current branch', new vscode.ThemeColor('charts.blue')) : undefined,
+    })
+  );
 
   const register = (id: string, handler: (...args: any[]) => unknown) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
@@ -584,21 +618,23 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.env.clipboard.writeText(node.commit.hash);
     }
   });
-  register('gitBranchViewer.loadMoreCommits', (key: string) => provider.showMoreCommits(key));
+  register('gitBranchViewer.loadMoreCommits', (key: string) => controller.providers.forEach((p) => p.showMoreCommits(key)));
   register('gitBranchViewer.openUrl', (url: string) => vscode.env.openExternal(vscode.Uri.parse(url)));
 
   context.subscriptions.push(
     view,
+    currentView,
     controller,
     view.onDidChangeVisibility((e) => e.visible && void controller.refresh()),
-    vscode.window.onDidChangeWindowState((s) => s.focused && view.visible && void controller.refresh()),
+    currentView.onDidChangeVisibility((e) => e.visible && void controller.refresh()),
+    vscode.window.onDidChangeWindowState((s) => s.focused && anyVisible() && void controller.refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void controller.refresh()),
     vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('gitBranchViewer') && void controller.refresh(true))
   );
 
   // Cheap periodic poll: the GitHub cache TTL (refreshIntervalSeconds) decides whether gh is actually called.
   const timer = setInterval(() => {
-    if (view.visible && vscode.window.state.focused) {
+    if (anyVisible() && vscode.window.state.focused) {
       void controller.refresh();
     }
   }, 30_000);
